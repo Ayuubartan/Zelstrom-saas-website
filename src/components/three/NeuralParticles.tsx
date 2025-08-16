@@ -1,98 +1,198 @@
 'use client'
 
-import { useRef, useMemo } from 'react';
-import { useFrame, useThree, extend } from '@react-three/fiber';
-import * as THREE from 'three';
-import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { shaderMaterial } from '@react-three/drei';
+import { useEffect, useMemo, useRef } from 'react'
+import * as THREE from 'three'
+import { useFrame, extend, ThreeElements } from '@react-three/fiber'
+import { shaderMaterial } from '@react-three/drei'
 
-// ✅ Shaders
-const vertexShader = `
+
+/* ===================== Shaders ===================== */
+
+const vertexShader = /* glsl */ `
   uniform float uTime;
-  uniform vec2 uMouse;
+  uniform vec2  uMouse;     // scene-space (scaled) mouse
+  uniform float uPointSize; // base size
+  uniform float uRadius;    // disk radius (also used for falloff)
+  attribute float aPhase;
   varying float vAlpha;
+
   void main() {
-    float dist = distance(position.xy, uMouse);
-    float pulse = sin(uTime * 4.0 + dist * 5.0) * 0.5 + 0.5;
-    vAlpha = 1.0 - smoothstep(0.0, 1.5, dist);
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = (5.0 + 5.0 * pulse) * (1.0 / -mvPosition.z);
-    gl_Position = projectionMatrix * mvPosition;
+    vec3 p = position;
+
+    // Breathing motion
+    float breathe = 0.22 * sin(uTime * 0.8 + aPhase * 6.2831853);
+    p.xy *= (1.0 + breathe);
+
+    // Mouse repel (soft)
+    float d = distance(p.xy, uMouse);
+    float repel = smoothstep(0.9 * uRadius, 0.0, d);
+    vec2 dir = normalize(p.xy - uMouse);
+    p.xy += dir * repel * 0.18;
+
+    // Alpha stronger near mouse for glow
+    vAlpha = 0.45 + 0.45 * smoothstep(0.9 * uRadius, 0.0, d);
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+
+    // Point size pulse (screen-space)
+    float sizePulse = 1.0 + 0.25 * sin(uTime * 1.3 + aPhase * 12.56637);
+    gl_PointSize = uPointSize * sizePulse;
   }
 `;
 
-const fragmentShader = `
+const fragmentShader = /* glsl */ `
   varying float vAlpha;
   void main() {
-    float d = length(gl_PointCoord - vec2(0.5));
-    float a = smoothstep(0.5, 0.0, d);
-    gl_FragColor = vec4(0.0, 1.0, 1.0, a * vAlpha);
+    vec2 uv = gl_PointCoord * 2.0 - 1.0;
+    float m = smoothstep(1.0, 0.0, length(uv));
+    gl_FragColor = vec4(0.60, 0.95, 1.00, m * vAlpha);
   }
 `;
 
-// ✅ Create material
+/* ===================== Material ===================== */
+
+/**
+ * Keep uniform defaults primitive/array to avoid deep type inference issues.
+ * We upgrade uMouse -> Vector2 once after mount.
+ */
 const ParticleMaterial = shaderMaterial(
-  { uTime: 0, uMouse: new THREE.Vector2() },
+  {
+    uTime: 0 as number,
+    uMouse: [0, 0] as [number, number],
+    uPointSize: 2.0 as number,
+    uRadius: 3.0 as number,
+  },
   vertexShader,
   fragmentShader
 );
 
-// ✅ Register
-extend({ ParticleMaterial });
+// Register as an intrinsic so <particleMaterial /> works in JSX
+extend({ ParticleMaterial })
 
-export default function NeuralParticles() {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
-  const materialRef = useRef<THREE.ShaderMaterial & { uTime: number; uMouse: THREE.Vector2 }>(null);
-  const { mouse, viewport } = useThree();
-  const particleCount = 1000;
+// Augment JSX so TS knows about <particleMaterial /> and its props.
+// (If you already have this in src/types/jsx.d.ts, you can omit the block below.)
+declare module '@react-three/fiber' {
+  interface ThreeElements {
+    particleMaterial: ThreeElements['meshStandardMaterial'] & {
+      'uniforms-uPointSize-value'?: number
+      'uniforms-uRadius-value'?: number
+      'uniforms-uTime-value'?: number
+      'uniforms-uMouse-value'?: [number, number] | THREE.Vector2
+    }
+  }
+}
 
-  const positions = useMemo(() => {
-    const arr = new Float32Array(particleCount * 3);
+
+/* ===================== Types ===================== */
+
+type ParticleShaderMaterial = THREE.ShaderMaterial & {
+  uniforms: {
+    uTime: { value: number }
+    uMouse: { value: THREE.Vector2 | [number, number] }
+    uPointSize: { value: number }
+    uRadius: { value: number }
+  }
+}
+
+export type NeuralParticlesProps = {
+  /** Desired max particle budget (auto-downscales on low-end/mobile) */
+  count?: number
+  /** Disk radius for initial layout + interaction falloff */
+  radius?: number
+  /** Base point size (px) */
+  pointSize?: number
+}
+
+/* ===================== Component ===================== */
+
+export default function NeuralParticles({
+  count = 12000,
+  radius = 3.0,
+  pointSize = 2.0,
+}: NeuralParticlesProps) {
+  const materialRef = useRef<ParticleShaderMaterial | null>(null)
+
+  // Adaptive budget heuristic
+  const particleCount = useMemo(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    const cores = (navigator as unknown as { hardwareConcurrency?: number })?.hardwareConcurrency ?? 4
+    const mobile = /Mobi|Android/i.test(ua)
+    if (mobile) return Math.min(count, 3000)
+    if (cores <= 4) return Math.min(count, 6000)
+    if (cores <= 8) return Math.min(count, 10000)
+    return count
+  }, [count])
+
+  // Positions on a Fibonacci disk + random phase
+  const { positions, phases } = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3)
+    const pha = new Float32Array(particleCount)
+
     for (let i = 0; i < particleCount; i++) {
-      arr[i * 3 + 0] = THREE.MathUtils.randFloatSpread(20);
-      arr[i * 3 + 1] = THREE.MathUtils.randFloatSpread(20);
-      arr[i * 3 + 2] = THREE.MathUtils.randFloatSpread(20);
-    }
-    return arr;
-  }, []);
+      const t = i / particleCount
+      const angle = t * Math.PI * (3.0 - Math.sqrt(5.0))
+      const r = Math.sqrt(t) * radius
+      const x = r * Math.cos(angle)
+      const y = r * Math.sin(angle)
+      const z = (Math.random() - 0.5) * 0.25
 
-  const dummy = useMemo(() => new THREE.Object3D(), []);
+      pos[i * 3 + 0] = x
+      pos[i * 3 + 1] = y
+      pos[i * 3 + 2] = z
 
-  useFrame(({ clock }) => {
-    const time = clock.getElapsedTime();
-
-    if (materialRef.current) {
-      materialRef.current.uTime = time;
-      materialRef.current.uMouse.set(
-        mouse.x * viewport.width * 0.5,
-        mouse.y * viewport.height * 0.5
-      );
+      pha[i] = Math.random()
     }
 
-    if (meshRef.current) {
-      for (let i = 0; i < particleCount; i++) {
-        dummy.position.set(
-          positions[i * 3 + 0],
-          positions[i * 3 + 1],
-          positions[i * 3 + 2]
-        );
-        dummy.updateMatrix();
-        meshRef.current.setMatrixAt(i, dummy.matrix);
+    return { positions: pos, phases: pha }
+  }, [particleCount, radius])
+
+  // One-time upgrade of uMouse uniform array -> Vector2 instance
+  useEffect(() => {
+    const mat = materialRef.current
+    if (!mat) return
+    const v = mat.uniforms.uMouse.value
+    if (Array.isArray(v)) {
+      mat.uniforms.uMouse.value = new THREE.Vector2(v[0], v[1])
+    }
+  }, [])
+
+  // Mouse move -> update uniform (scene-space scaled by radius)
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const xNdc = (e.clientX / window.innerWidth) * 2 - 1
+      const yNdc = -(e.clientY / window.innerHeight) * 2 + 1
+      const mat = materialRef.current
+      if (mat && mat.uniforms.uMouse.value instanceof THREE.Vector2) {
+        mat.uniforms.uMouse.value.set(xNdc * radius, yNdc * radius)
       }
-      meshRef.current.instanceMatrix.needsUpdate = true;
     }
-  });
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [radius])
+
+  // Tick time
+  useFrame((_, dt) => {
+    const mat = materialRef.current
+    if (mat) mat.uniforms.uTime.value += dt
+  })
 
   return (
-    <>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, particleCount]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <particleMaterial ref={materialRef} attach="material" />
-      </instancedMesh>
+    <group>
+      <points frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-aPhase" args={[phases, 1]} />
+        </bufferGeometry>
 
-      <EffectComposer>
-        <Bloom luminanceThreshold={0.2} luminanceSmoothing={0.8} height={300} />
-      </EffectComposer>
-    </>
-  );
+        <particleMaterial
+          ref={materialRef}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          uniforms-uPointSize-value={pointSize}
+          uniforms-uRadius-value={radius}
+        />
+      </points>
+    </group>
+  )
 }

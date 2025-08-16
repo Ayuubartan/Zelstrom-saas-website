@@ -1,35 +1,37 @@
 'use client'
+import dynamic from 'next/dynamic'
+import CanvasRoot from '@/components/r3f/CanvasRoot'
 
-import { Canvas } from '@react-three/fiber'
-import { Suspense } from 'react'
-import NeuralParticles from '@/components/three/NeuralParticles'
+const HeroScene = dynamic(() => import('@/components/three/HeroScene'), { ssr: false })
 
 export default function Hero() {
   return (
-    <section className="relative w-full h-screen bg-black overflow-hidden">
-      {/* Canvas in background */}
-      <Canvas
-        className="!absolute !top-0 !left-0 !w-full !h-full z-0"
-        camera={{ position: [0, 0, 10], fov: 60 }}
-      >
-        <Suspense fallback={null}>
-          <NeuralParticles />
-        </Suspense>
-      </Canvas>
-
-      {/* Overlay Title */}
-      <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-        <div className="text-center">
-          <h1 className="text-white text-[48px] md:text-[72px] lg:text-[84px] font-extrabold tracking-tight leading-tight">
-            Zelstrom
-          </h1>
-          <p className="text-cyan-400 text-[18px] md:text-[22px] lg:text-[26px] mt-2 font-light italic tracking-widest animate-pulse">
-            Live Neural Vectors, In Motion
-          </p>
+    <section className="relative h-[100svh] w-full overflow-hidden">
+      <div className="absolute inset-0 -z-10 bg-black" />
+      <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-6">
+        <h1 className="pointer-events-auto text-4xl md:text-6xl font-semibold tracking-tight text-white drop-shadow">
+          Zelstrom — Live Neural Vectors in Motion
+        </h1>
+        <p className="mt-4 max-w-2xl text-white/70">
+          Predictive media intelligence. Real-time optimization. Premium performance.
+        </p>
+        <div className="pointer-events-auto mt-8 flex gap-3">
+          <a href="/signup" className="rounded-2xl bg-white/10 px-5 py-3 text-white backdrop-blur hover:bg-white/20 transition">
+            Get Started
+          </a>
+          <a href="/docs" className="rounded-2xl border border-white/20 px-5 py-3 text-white hover:bg-white/10 transition">
+            Learn More
+          </a>
         </div>
       </div>
+
+      <div className="absolute inset-0 z-10" aria-hidden>
+        <CanvasRoot>
+          <HeroScene />
+        </CanvasRoot>
+      </div>
+
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(50%_50%_at_50%_50%,rgba(0,255,255,0.06)_0%,rgba(0,0,0,0.9)_70%)]" />
     </section>
   )
 }
-
-

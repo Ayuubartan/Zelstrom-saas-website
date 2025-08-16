@@ -1,19 +1,17 @@
-// 📁 src/app/page.tsx or src/pages/index.tsx
+import Hero from '@/sections/Hero'
+import Work from '@/sections/Work'
+import Manifesto from '@/sections/Manifesto'
+import Lab from '@/sections/Lab'
+import Contact from '@/sections/Contact'
 
-'use client'
-
-import { Canvas } from '@react-three/fiber'
-import NeuralParticles from '@/components/three/NeuralParticles'
-// src/app/layout.tsx or src/pages/_app.tsx
-
-
-
-export default function Home() {
+export default function Page() {
   return (
-    <main className="w-full h-screen">
-      <Canvas camera={{ position: [0, 0, 15], fov: 75 }}>
-        <NeuralParticles />
-      </Canvas>
+    <main className="min-h-screen pt-14"> {/* pt-14 so content isn't under the navbar */}
+      <Hero />
+      <Work />
+      <Manifesto />
+      <Lab />
+      <Contact />
     </main>
   )
 }

@@ -1,20 +1,22 @@
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import Navbar from '@/components/Navbar'
+
 
 export const metadata = {
   title: 'Zelstrom Analytics',
-  description: 'Predictive AI for media optimization',
+  description: 'Predictive media intelligence.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <body className="bg-black text-white">
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+          <Navbar />
           {children}
         </ThemeProvider>
       </body>
     </html>
   )
 }
-
