@@ -30,7 +30,7 @@ export default function Hero() {
           camera={{ position: [0, 0, 10], fov: 60 }}
           dpr={[1, 1.75]}
           onCreated={({ gl }) => {
-            gl.setClearColor('#0B0F1A', 1) // deep background like before
+            gl.setClearColor('#000000ff', 1) // deep background like before
           }}
         >
           {/* Bring back the arc aesthetic via props */}
