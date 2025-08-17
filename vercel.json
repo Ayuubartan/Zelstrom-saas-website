@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "https://zelstrom.io/:path*",
+      "destination": "https://www.zelstrom.io/:path*",
+      "permanent": true
+    }
+  ]
+}
