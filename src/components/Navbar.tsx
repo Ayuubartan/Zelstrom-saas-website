@@ -1,34 +1,52 @@
 'use client'
+
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { Menu, X } from 'lucide-react'
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12)
-    onScroll()
-    window.addEventListener('scroll', onScroll)
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
+  const [open, setOpen] = useState(false)
 
   return (
-    <header className={`fixed top-0 inset-x-0 z-40 transition
-      ${scrolled ? 'backdrop-blur bg-black/40 border-b border-white/10' : 'bg-transparent'}`}>
-      <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <Link href="/" className="text-white font-semibold tracking-tight">Zelstrom</Link>
-        <div className="flex items-center gap-6 text-sm">
-          <Link href="/#work" className="text-white/80 hover:text-white">Work</Link>
-          <Link href="/#manifesto" className="text-white/80 hover:text-white">Manifesto</Link>
-          <Link href="/#lab" className="text-white/80 hover:text-white">Lab</Link>
-          <Link href="/#contact" className="text-white/80 hover:text-white">Contact</Link>
-          <Link
-            href="/login"
-            className="ml-2 rounded-xl border border-white/20 px-3 py-1.5 text-white hover:bg-white/10 transition"
-          >
+    <header className="fixed top-0 left-0 w-full z-50 bg-black/40 backdrop-blur-sm border-b border-white/10">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+        {/* Logo */}
+        <Link href="/" className="text-2xl font-bold text-white">
+          Zelstrom
+        </Link>
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex space-x-8 text-gray-300 font-medium">
+          <Link href="#work" className="hover:text-white transition">Work</Link>
+          <Link href="#manifesto" className="hover:text-white transition">Manifesto</Link>
+          <Link href="#lab" className="hover:text-white transition">Lab</Link>
+          <Link href="#contact" className="hover:text-white transition">Contact</Link>
+          <button className="ml-4 px-5 py-2 rounded-full border border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-black transition">
             Login
-          </Link>
+          </button>
+        </nav>
+
+        {/* Mobile Hamburger */}
+        <button
+          className="md:hidden text-gray-300 hover:text-white transition"
+          onClick={() => setOpen(!open)}
+        >
+          {open ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* Mobile Menu */}
+      {open && (
+        <div className="md:hidden bg-black/90 px-6 py-4 space-y-4 text-gray-300 font-medium">
+          <Link href="#work" onClick={() => setOpen(false)} className="block hover:text-white">Work</Link>
+          <Link href="#manifesto" onClick={() => setOpen(false)} className="block hover:text-white">Manifesto</Link>
+          <Link href="#lab" onClick={() => setOpen(false)} className="block hover:text-white">Lab</Link>
+          <Link href="#contact" onClick={() => setOpen(false)} className="block hover:text-white">Contact</Link>
+          <button className="w-full px-5 py-2 rounded-full border border-teal-400 text-teal-400 hover:bg-teal-400 hover:text-black transition">
+            Login
+          </button>
         </div>
-      </nav>
+      )}
     </header>
   )
 }

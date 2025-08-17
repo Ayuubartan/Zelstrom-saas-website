@@ -141,10 +141,10 @@
    Zelstrom Phase-3 overrides
    (put last so they always win)
    ──────────────────────────────── */
-html,
-body {
-  background: #0B0F1A; /* ensure dark bg from first paint */
+html, body, #__next, #root {
+  background: #000 !important;
 }
+
 
 canvas {
   display: block; /* fix inline gap/scrollbars around R3F canvas */

@@ -1,162 +1,184 @@
-'use client';
+'use client'
 
-import { useEffect, useMemo, useRef } from 'react';
-import * as THREE from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react'
+import * as THREE from 'three'
+import { useFrame, extend, ThreeElements } from '@react-three/fiber'
+import { shaderMaterial } from '@react-three/drei'
 
-type NeuralParticlesProps = {
-  count?: number;
-  radius?: number;
-  pointSize?: number;
-};
+/* ===================== Shaders ===================== */
 
-/**
- * Arc-distributed teal particles with depth-based size, subtle swirl,
- * and gentle mouse interaction — tuned to match the first screenshot.
- */
+const vertexShader = /* glsl */ `
+  uniform float uTime;
+  uniform vec2  uMouse;
+  uniform float uPointSize;
+  uniform float uRadius;
+  attribute float aPhase;
+  varying float vAlpha;
+
+  void main() {
+    vec3 p = position;
+
+    // Breathing motion
+    float breathe = 0.22 * sin(uTime * 0.8 + aPhase * 6.2831853);
+    p.xy *= (1.0 + breathe);
+
+    // Mouse repel
+    float d = distance(p.xy, uMouse);
+    float repel = smoothstep(0.9 * uRadius, 0.0, d);
+    vec2 dir = normalize(p.xy - uMouse);
+    p.xy += dir * repel * 0.18;
+
+    vAlpha = 0.45 + 0.45 * smoothstep(0.9 * uRadius, 0.0, d);
+
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+
+    float sizePulse = 1.0 + 0.25 * sin(uTime * 1.3 + aPhase * 12.56637);
+    gl_PointSize = uPointSize * sizePulse;
+  }
+`
+
+const fragmentShader = /* glsl */ `
+  varying float vAlpha;
+  void main() {
+    vec2 uv = gl_PointCoord * 2.0 - 1.0;
+    float m = smoothstep(1.0, 0.0, length(uv));
+    gl_FragColor = vec4(0.60, 0.95, 1.00, m * vAlpha); // cyan glow
+  }
+`
+
+/* ===================== Material ===================== */
+
+const ParticleMaterial = shaderMaterial(
+  {
+    uTime: 0 as number,
+    uMouse: [0, 0] as [number, number],
+    uPointSize: 3.2 as number, // ⬅️ bigger glow
+    uRadius: 4.5 as number,    // ⬅️ larger spiral radius
+  },
+  vertexShader,
+  fragmentShader
+)
+
+extend({ ParticleMaterial })
+
+declare module '@react-three/fiber' {
+  interface ThreeElements {
+    particleMaterial: ThreeElements['meshStandardMaterial'] & {
+      'uniforms-uPointSize-value'?: number
+      'uniforms-uRadius-value'?: number
+      'uniforms-uTime-value'?: number
+      'uniforms-uMouse-value'?: [number, number] | THREE.Vector2
+    }
+  }
+}
+
+/* ===================== Types ===================== */
+
+type ParticleShaderMaterial = THREE.ShaderMaterial & {
+  uniforms: {
+    uTime: { value: number }
+    uMouse: { value: THREE.Vector2 | [number, number] }
+    uPointSize: { value: number }
+    uRadius: { value: number }
+  }
+}
+
+export type NeuralParticlesProps = {
+  count?: number
+  radius?: number
+  pointSize?: number
+}
+
+/* ===================== Component ===================== */
+
 export default function NeuralParticles({
-  count = 20000,
-  radius = 5.0,
-  pointSize = 2.0,
+  count = 12000,
+  radius = 4.5,
+  pointSize = 3.2,
 }: NeuralParticlesProps) {
-  const geomRef = useRef<THREE.BufferGeometry>(null!);
-  const matRef = useRef<THREE.ShaderMaterial>(null!);
-  const { viewport, pointer } = useThree();
+  const materialRef = useRef<ParticleShaderMaterial | null>(null)
 
-  // Arc ring (not a sphere) with slight thickness
-  const positions = useMemo(() => {
-    const arr = new Float32Array(count * 3);
+  // Adaptive budget
+  const particleCount = useMemo(() => {
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+    const cores = (navigator as unknown as { hardwareConcurrency?: number })?.hardwareConcurrency ?? 4
+    const mobile = /Mobi|Android/i.test(ua)
+    if (mobile) return Math.min(count, 2500)
+    if (cores <= 4) return Math.min(count, 5000)
+    if (cores <= 8) return Math.min(count, 9000)
+    return count
+  }, [count])
 
-    // Arc parameters: diagonal sweep like the photo
-    const arcStart = -0.25 * Math.PI; // bottom-left
-    const arcEnd = 1.25 * Math.PI;    // top-right
-    const ringThickness = 0.55;       // radial jitter
+  // Fibonacci spiral distribution
+  const { positions, phases } = useMemo(() => {
+    const pos = new Float32Array(particleCount * 3)
+    const pha = new Float32Array(particleCount)
 
-    for (let i = 0; i < count; i++) {
-      const t = Math.random();
-      const angle = arcStart + t * (arcEnd - arcStart);
-      const rJitter = (Math.random() - 0.5) * ringThickness;
-      const rr = radius + rJitter;
+    for (let i = 0; i < particleCount; i++) {
+      const t = i / particleCount
+      const angle = t * Math.PI * (3.0 - Math.sqrt(5.0))
+      const r = Math.sqrt(t) * radius
+      const x = r * Math.cos(angle)
+      const y = r * Math.sin(angle)
+      const z = (Math.random() - 0.5) * 0.3
 
-      const x = Math.cos(angle) * rr;
-      const y = Math.sin(angle) * rr;
-      const z = (Math.random() - 0.5) * 0.6; // shallow depth
+      pos[i * 3 + 0] = x
+      pos[i * 3 + 1] = y
+      pos[i * 3 + 2] = z
 
-      arr[i * 3 + 0] = x;
-      arr[i * 3 + 1] = y;
-      arr[i * 3 + 2] = z;
+      pha[i] = Math.random()
     }
-    return arr;
-  }, [count, radius]);
 
-  // Vertex shader
-  const vertexShader = /* glsl */ `
-    uniform float uTime;
-    uniform vec2  uMouse;       // world-ish units
-    uniform float uPointSize;   // base px size
-    varying float vAlpha;
+    return { positions: pos, phases: pha }
+  }, [particleCount, radius])
 
-    void main() {
-      vec3 p = position;
-
-      // Subtle swirl motion (cinematic breathing)
-      float r = length(p.xy);
-      float theta = atan(p.y, p.x);
-      theta += 0.07 * sin(uTime * 0.35 + r * 0.6);
-      p.x = cos(theta) * r;
-      p.y = sin(theta) * r;
-
-      // Gentle mouse repulsion (short range)
-      float d = distance(p.xy, uMouse);
-      float influence = smoothstep(0.0, 1.5, 1.5 - d);
-      p.xy += normalize(p.xy - uMouse) * influence * 0.045;
-
-      vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
-
-      // Depth-based size scaling
-      float depth = -mvPosition.z; // closer => larger
-      float size = uPointSize * (1.0 + clamp(depth * 0.06, 0.0, 1.0));
-
-      gl_PointSize = size;
-      gl_Position = projectionMatrix * mvPosition;
-
-      // Soft fade by depth
-      vAlpha = 0.6 + 0.4 * smoothstep(0.0, 8.0, depth);
-    }
-  `;
-
-  // Fragment shader (fixed premium teal)
-  const fragmentShader = /* glsl */ `
-    precision mediump float;
-    varying float vAlpha;
-    const vec3 teal = vec3(0.0, 0.92, 0.76);
-
-    void main() {
-      // round particle with smooth edge
-      vec2 uv = gl_PointCoord * 2.0 - 1.0;
-      float r2 = dot(uv, uv);
-      float mask = smoothstep(1.0, 0.6, r2);
-      gl_FragColor = vec4(teal, vAlpha * mask);
-      gl_FragColor.a *= smoothstep(1.0, 0.0, r2);
-    }
-  `;
-
-  // Uniforms
-  const uniforms = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uMouse: { value: new THREE.Vector2(0, -radius * 0.8) }, // start slightly below center
-      uPointSize: {
-        value:
-          pointSize *
-          (typeof window !== 'undefined' ? window.devicePixelRatio : 1),
-      },
-    }),
-    [pointSize, radius]
-  );
-
-  // Animate time + pointer mapping
-  const { width, height } = viewport;
-  useFrame((_, delta) => {
-    if (matRef.current) {
-      matRef.current.uniforms.uTime.value += delta;
-      const mx = pointer.x * (width * 0.5);
-      const my = pointer.y * (height * 0.5);
-      matRef.current.uniforms.uMouse.value.set(mx, my);
-    }
-  });
-
-  // Cleanup
+  // Upgrade uMouse to Vector2
   useEffect(() => {
-    return () => {
-      geomRef.current?.dispose?.();
-      matRef.current?.dispose?.();
-    };
-  }, []);
+    const mat = materialRef.current
+    if (!mat) return
+    const v = mat.uniforms.uMouse.value
+    if (Array.isArray(v)) {
+      mat.uniforms.uMouse.value = new THREE.Vector2(v[0], v[1])
+    }
+  }, [])
+
+  // Mouse listener
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const xNdc = (e.clientX / window.innerWidth) * 2 - 1
+      const yNdc = -(e.clientY / window.innerHeight) * 2 + 1
+      const mat = materialRef.current
+      if (mat && mat.uniforms.uMouse.value instanceof THREE.Vector2) {
+        mat.uniforms.uMouse.value.set(xNdc * radius, yNdc * radius)
+      }
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [radius])
+
+  // Animate time
+  useFrame((_, dt) => {
+    const mat = materialRef.current
+    if (mat) mat.uniforms.uTime.value += dt
+  })
 
   return (
-    <points frustumCulled>
-      <bufferGeometry ref={geomRef}>
-        {/* R3F v9 BufferAttribute signature */}
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-          onUpdate={(attr: THREE.BufferAttribute) => {
-            attr.needsUpdate = true;
-            attr.setUsage(THREE.DynamicDrawUsage);
-          }}
-        />
-      </bufferGeometry>
+    <group>
+      <points frustumCulled={false}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+          <bufferAttribute attach="attributes-aPhase" args={[phases, 1]} />
+        </bufferGeometry>
 
-      <shaderMaterial
-        ref={matRef}
-        depthWrite={false}
-        transparent
-        blending={THREE.AdditiveBlending}
-        uniforms={uniforms}
-        vertexShader={vertexShader}
-        fragmentShader={fragmentShader}
-      />
-    </points>
-  );
+        <particleMaterial
+          ref={materialRef}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          uniforms-uPointSize-value={pointSize}
+          uniforms-uRadius-value={radius}
+        />
+      </points>
+    </group>
+  )
 }

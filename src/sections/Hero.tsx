@@ -1,37 +1,40 @@
-'use client';
+'use client'
 
-import HeroScene from '@/components/three/HeroScene';
-
+import { Canvas } from '@react-three/fiber'
+import { Suspense } from 'react'
+import NeuralParticles from '@/components/three/NeuralParticles'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
 
 export default function Hero() {
   return (
-    <section className="relative h-screen w-full overflow-hidden bg-black">
-      {/* 3D background */}
-      <HeroScene />
+    <section className="relative w-full h-screen bg-black">
+      {/* Particles Canvas */}
+      <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
+        <Suspense fallback={null}>
+          <NeuralParticles />
+          <EffectComposer>
+            <Bloom intensity={1.2} luminanceThreshold={0.1} luminanceSmoothing={0.8} />
+          </EffectComposer>
+        </Suspense>
+      </Canvas>
 
-      {/* Overlay content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-white">
+      {/* Overlay Text */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-center">
+        <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
           Zelstrom — Live Neural Vectors in Motion
         </h1>
-        <p className="mt-4 max-w-2xl text-base sm:text-lg text-white/70">
+        <p className="text-lg text-gray-300 mb-6">
           Predictive media intelligence. Real-time optimization. Premium performance.
         </p>
-        <div className="mt-8 flex items-center gap-4">
-          <a
-            href="#get-started"
-            className="rounded-2xl px-5 py-2.5 bg-white/10 text-white backdrop-blur border border-white/10 hover:bg-white/15 transition"
-          >
+        <div className="flex gap-4">
+          <button className="px-6 py-3 rounded-full bg-teal-500 text-black font-semibold hover:bg-teal-400 transition">
             Get Started
-          </a>
-          <a
-            href="#learn-more"
-            className="rounded-2xl px-5 py-2.5 text-white border border-white/15 hover:bg-white/05 transition"
-          >
+          </button>
+          <button className="px-6 py-3 rounded-full border border-teal-500 text-teal-400 hover:bg-teal-500 hover:text-black transition">
             Learn More
-          </a>
+          </button>
         </div>
       </div>
     </section>
-  );
+  )
 }
