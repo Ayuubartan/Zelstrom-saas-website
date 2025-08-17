@@ -1,21 +1,59 @@
+// src/app/layout.tsx
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
-import { ThemeProvider } from '@/components/ThemeProvider'
-import Navbar from '@/components/Navbar'
 
+const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.zelstrom.io'
 
-export const metadata = {
-  title: 'Zelstrom Analytics',
-  description: 'Predictive media intelligence.',
+export const metadata: Metadata = {
+  metadataBase: new URL(base),
+  title: 'Zelstrom — Neural Vectors in Motion',
+  description:
+    'AI-native media intelligence: Vault (data), Cortex (predictive), OS (automation).',
+  openGraph: {
+    title: 'Zelstrom',
+    description: 'AI-native media intelligence: Vault, Cortex, OS.',
+    url: base,
+    images: [
+      {
+        url: '/og.png',
+        width: 1200,
+        height: 630,
+        alt: 'Zelstrom — Neural Vectors in Motion',
+      },
+    ],
+    siteName: 'Zelstrom',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    site: '@zelstrom', // update when you have the official handle
+    creator: '@zelstrom',
+    title: 'Zelstrom — Neural Vectors in Motion',
+    description:
+      'AI-native media intelligence: Vault (data), Cortex (predictive), OS (automation).',
+    images: ['/og.png'],
+  },
+  alternates: {
+    canonical: 'https://www.zelstrom.io',
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
+  themeColor: '#0B0F1A',
+}
+
+// Prefer Next.js viewport export over a manual <meta name="viewport" ...>
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-black text-white">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <Navbar />
-          {children}
-        </ThemeProvider>
+    <html lang="en" className="bg-[#0B0F1A]">
+      <body className="bg-[#0B0F1A] text-white antialiased">
+        {children}
       </body>
     </html>
   )

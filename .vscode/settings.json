@@ -1,0 +1,11 @@
+{
+  // Associate globals.css with PostCSS so @theme/@custom-variant/@apply are understood
+  "files.associations": {
+    "**/src/app/globals.css": "postcss"
+  },
+
+  // Disable built-in CSS/SCSS/LESS validation (Tailwind/PostCSS handles it)
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false
+}

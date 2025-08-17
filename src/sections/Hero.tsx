@@ -1,37 +1,66 @@
+// src/sections/Hero.tsx
 'use client'
-import dynamic from 'next/dynamic'
-import CanvasRoot from '@/components/r3f/CanvasRoot'
 
-const HeroScene = dynamic(() => import('@/components/three/HeroScene'), { ssr: false })
+import dynamic from 'next/dynamic'
+import { Canvas } from '@react-three/fiber'
+import { Suspense, useCallback } from 'react'
+import { EffectComposer, Bloom } from '@react-three/postprocessing'
+
+// ✅ local pieces you added earlier
+import LoadingOverlay from '@/components/ui/LoadingOverlay'
+import ScrollCue from '@/components/ui/ScrollCue'
+import useParticleBudget from '@/hooks/useParticleBudget'
+
+// Lazy-load the R3F scene to keep first paint snappy
+const NeuralParticles = dynamic(
+  () => import('@/components/three/NeuralParticles'),
+  { ssr: false }
+)
 
 export default function Hero() {
+  // Mobile/DPR-aware particle scaling
+  const { count } = useParticleBudget()
+
+  // When LoadingOverlay determines assets are ready, fade in hero copy
+  const onReady = useCallback(() => {
+    // Add a class to <html> so CSS can reveal text (see globals.css .hero-ready .hero-copy)
+    document.documentElement.classList.add('hero-ready')
+  }, [])
+
   return (
     <section className="relative h-[100svh] w-full overflow-hidden">
-      <div className="absolute inset-0 -z-10 bg-black" />
-      <div className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center text-center px-6">
-        <h1 className="pointer-events-auto text-4xl md:text-6xl font-semibold tracking-tight text-white drop-shadow">
-          Zelstrom — Live Neural Vectors in Motion
+      {/* Fixed overlay that hides itself when R3F loading completes */}
+      <LoadingOverlay onReady={onReady} />
+
+      <Suspense fallback={null}>
+        <Canvas
+          camera={{ position: [0, 0, 10], fov: 60 }}
+          // Cap DPR to reduce overdraw/heat on mobile
+          dpr={[1, 1.75]}
+        >
+          {/* Your shader-based particle field */}
+          <NeuralParticles particleCount={count} />
+
+
+          {/* Tasteful glow; keep intensity modest for performance */}
+          <EffectComposer>
+            <Bloom luminanceThreshold={0.12} luminanceSmoothing={0.8} intensity={0.6} />
+          </EffectComposer>
+        </Canvas>
+      </Suspense>
+
+      {/* Scroll hint */}
+      <ScrollCue />
+
+      {/* Hero copy — hidden until .hero-ready is set (see globals.css helper) */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-24 mx-auto max-w-3xl px-6 text-center">
+        <h1 className="hero-copy opacity-0 translate-y-3 transition-all duration-500 text-3xl md:text-5xl font-semibold tracking-[-0.02em]">
+          Zelstrom — Neural Vectors in Motion
         </h1>
-        <p className="mt-4 max-w-2xl text-white/70">
-          Predictive media intelligence. Real-time optimization. Premium performance.
+        <p className="hero-copy mt-3 opacity-0 translate-y-3 transition-all duration-700 text-white/70">
+          AI-native media intelligence: Vault (data), Cortex (predictive), OS (automation).
         </p>
-        <div className="pointer-events-auto mt-8 flex gap-3">
-          <a href="/signup" className="rounded-2xl bg-white/10 px-5 py-3 text-white backdrop-blur hover:bg-white/20 transition">
-            Get Started
-          </a>
-          <a href="/docs" className="rounded-2xl border border-white/20 px-5 py-3 text-white hover:bg-white/10 transition">
-            Learn More
-          </a>
-        </div>
       </div>
-
-      <div className="absolute inset-0 z-10" aria-hidden>
-        <CanvasRoot>
-          <HeroScene />
-        </CanvasRoot>
-      </div>
-
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(50%_50%_at_50%_50%,rgba(0,255,255,0.06)_0%,rgba(0,0,0,0.9)_70%)]" />
     </section>
   )
 }
