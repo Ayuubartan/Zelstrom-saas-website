@@ -1,6 +1,12 @@
 {
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "zelstrom.io" }],
+      "destination": "https://www.zelstrom.io/",
+      "permanent": true
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "zelstrom.io" }],
       "destination": "https://www.zelstrom.io/:path*",
