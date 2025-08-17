@@ -1,7 +1,8 @@
 {
   "redirects": [
     {
-      "source": "https://zelstrom.io/:path*",
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "zelstrom.io" }],
       "destination": "https://www.zelstrom.io/:path*",
       "permanent": true
     }
