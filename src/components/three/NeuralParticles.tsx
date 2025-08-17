@@ -6,25 +6,40 @@ import { useMemo, useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 
 export type NeuralParticlesProps = {
-  /** Desired particle count; rebuilds buffers when it changes */
+  /** New prop name */
   particleCount?: number
+  /** Legacy/alternate prop names (kept for compatibility) */
+  count?: number
+  radius?: number
+  pointSize?: number
 }
 
-export default function NeuralParticles({ particleCount = 48000 }: NeuralParticlesProps) {
+export default function NeuralParticles(props: NeuralParticlesProps) {
+  const {
+    particleCount,
+    count,
+    radius = 3.0,
+    pointSize = 1.75,
+  } = props
+
+  // Support both `particleCount` and legacy `count`
+  const resolvedCount = particleCount ?? count ?? 48000
+
   const pointsRef = useRef<THREE.Points | null>(null)
   const materialRef = useRef<THREE.ShaderMaterial | null>(null)
 
-  // ---------- Buffers (recomputed when particleCount changes)
+  // ---------- Buffers (recomputed when resolvedCount/radius changes)
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry()
-    const positions = new Float32Array(particleCount * 3)
+    const positions = new Float32Array(resolvedCount * 3)
 
+    // simple spiral-ish radial scatter influenced by radius
     const rng = (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1
-    for (let i = 0; i < particleCount; i++) {
+    for (let i = 0; i < resolvedCount; i++) {
       const ix = i * 3
-      const r = 2.0 + 2.5 * rng(i + 7)
+      const r = (0.7 * radius) + (0.9 * radius) * rng(i + 7)
       const a = 6.2831853 * rng(i + 13)
-      const z = (rng(i + 29) - 0.5) * 1.6
+      const z = (rng(i + 29) - 0.5) * (radius * 0.5)
       positions[ix + 0] = Math.cos(a) * r
       positions[ix + 1] = Math.sin(a) * r
       positions[ix + 2] = z
@@ -32,13 +47,13 @@ export default function NeuralParticles({ particleCount = 48000 }: NeuralParticl
 
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     return geom
-  }, [particleCount])
+  }, [resolvedCount, radius])
 
   // ---------- Shaders
   const vertexShader = /* glsl */ `
     uniform float uTime;
     uniform vec2 uMouse;
-    attribute vec3 position;
+    uniform float uPointBase;
     varying float vAlpha;
 
     void main() {
@@ -56,9 +71,9 @@ export default function NeuralParticles({ particleCount = 48000 }: NeuralParticl
 
       vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = (1.75 + 1.5 * repel) * (300.0 / -mvPosition.z);
+      gl_PointSize = (uPointBase + 1.5 * repel) * (300.0 / -mvPosition.z);
     }
-  `
+  `;
 
   const fragmentShader = /* glsl */ `
     varying float vAlpha;
@@ -67,9 +82,9 @@ export default function NeuralParticles({ particleCount = 48000 }: NeuralParticl
       float m = smoothstep(0.5, 0.0, length(uv));
       gl_FragColor = vec4(1.0, 1.0, 1.0, m * vAlpha);
     }
-  `
+  `;
 
-  // ---------- Material (created once; uniforms updated per-frame)
+  // ---------- Material (once)
   const material = useMemo(() => {
     return new THREE.ShaderMaterial({
       transparent: true,
@@ -78,11 +93,12 @@ export default function NeuralParticles({ particleCount = 48000 }: NeuralParticl
       uniforms: {
         uTime: { value: 0 },
         uMouse: { value: new THREE.Vector2(0.0, 0.0) },
+        uPointBase: { value: pointSize }, // base sprite size (from prop)
       },
       vertexShader,
       fragmentShader,
     })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pointSize])
 
   useEffect(() => {
     materialRef.current = material

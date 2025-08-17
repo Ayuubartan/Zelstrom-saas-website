@@ -1,7 +1,7 @@
 // src/components/ui/LoadingOverlay.tsx
 'use client'
 import { useEffect, useState } from 'react'
-import { Html, useProgress } from '@react-three/drei'
+import { useProgress } from '@react-three/drei'
 
 export default function LoadingOverlay({ onReady }: { onReady?: () => void }) {
   const { active, progress } = useProgress()
