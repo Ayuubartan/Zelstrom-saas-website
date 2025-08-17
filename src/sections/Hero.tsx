@@ -34,18 +34,7 @@ export default function Hero() {
           }}
         >
           {/* Bring back the arc aesthetic via props */}
-          <NeuralParticles
-            particleCount={count}
-            radius={3.2}
-            pointSize={1.1}
-            hue={165}          // teal-green
-            saturation={0.55}
-            value={0.9}
-            arcStart={-0.2}    // radians, start of visible arc
-            arcEnd={1.1}       // radians, end of visible arc
-            arcFeather={0.6}   // soft edge on arc mask
-            vignette={0.9}     // subtle center glow
-          />
+          <NeuralParticles count={20000} radius={5} pointSize={2} />
 
           <EffectComposer>
             <Bloom

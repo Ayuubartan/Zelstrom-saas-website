@@ -1,215 +1,160 @@
-'use client'
+'use client';
 
-import * as THREE from 'three'
-import { useMemo, useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react';
+import * as THREE from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
 
-export type NeuralParticlesProps = {
-  particleCount?: number
-  count?: number               // legacy
-  radius?: number
-  pointSize?: number
-  // color as HSV for easy brand tuning
-  hue?: number                 // 0..360
-  saturation?: number          // 0..1
-  value?: number               // 0..1
-  // arc controls (in radians around the ring)
-  arcStart?: number            // e.g. -0.2
-  arcEnd?: number              // e.g. 1.1
-  arcFeather?: number          // softness at the arc edges (0..1)
-  // center glow amount
-  vignette?: number            // 0..1
-}
+type NeuralParticlesProps = {
+  count?: number;
+  radius?: number;
+  pointSize?: number;
+};
 
-export default function NeuralParticles(props: NeuralParticlesProps) {
-  const {
-    particleCount, count,
-    radius = 3.0,
-    pointSize = 1.1,
-    hue = 165, saturation = 0.55, value = 0.9,
-    arcStart = -0.25, arcEnd = 1.05, arcFeather = 0.6,
-    vignette = 0.85,
-  } = props
+/**
+ * Arc-distributed teal particles with depth-based size, subtle swirl,
+ * and gentle mouse interaction. Matches the "Live Neural Vectors in Motion" look.
+ */
+export default function NeuralParticles({
+  count = 20000,
+  radius = 5.0,
+  pointSize = 2.0,
+}: NeuralParticlesProps) {
+  const geomRef = useRef<THREE.BufferGeometry>(null!);
+  const matRef = useRef<THREE.ShaderMaterial>(null!);
+  const { viewport, pointer } = useThree();
 
-  const resolvedCount = particleCount ?? count ?? 42000
+  // —— Generate an arc ring (not a full sphere), with slight thickness
+  const positions = useMemo(() => {
+    const arr = new Float32Array(count * 3);
 
-  const pointsRef = useRef<THREE.Points | null>(null)
-  const materialRef = useRef<THREE.ShaderMaterial | null>(null)
+    // Arc parameters
+    const arcStart = -0.25 * Math.PI; // open at bottom-left
+    const arcEnd = 1.25 * Math.PI;    // sweep to top-right
+    const ringThickness = 0.55;       // radial jitter
 
-  // Geometry with an arc mask: we still generate a full ring but store angle for shader mask
-  const geometry = useMemo(() => {
-    const geom = new THREE.BufferGeometry()
-    const positions = new Float32Array(resolvedCount * 3)
-    const angles = new Float32Array(resolvedCount) // store polar angle for arc mask
+    for (let i = 0; i < count; i++) {
+      const t = Math.random();
+      const angle = arcStart + t * (arcEnd - arcStart);
 
-    const rng = (i: number) => (Math.sin(i * 12.9898) * 43758.5453) % 1
+      const rJitter = (Math.random() - 0.5) * ringThickness;
+      const rr = radius + rJitter;
 
-    for (let i = 0; i < resolvedCount; i++) {
-      const ix = i * 3
-      const a = 2.0 * Math.PI * rng(i + 11)
-      const r = (0.6 * radius) + (0.9 * radius) * rng(i + 7)
-      const z = (rng(i + 29) - 0.5) * (radius * 0.45)
+      const x = Math.cos(angle) * rr;
+      const y = Math.sin(angle) * rr;
+      const z = (Math.random() - 0.5) * 0.6; // shallow depth
 
-      positions[ix + 0] = Math.cos(a) * r
-      positions[ix + 1] = Math.sin(a) * r
-      positions[ix + 2] = z
-      angles[i] = a
+      arr[i * 3 + 0] = x;
+      arr[i * 3 + 1] = y;
+      arr[i * 3 + 2] = z;
     }
+    return arr;
+  }, [count, radius]);
 
-    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-    geom.setAttribute('aAngle', new THREE.BufferAttribute(angles, 1))
-    return geom
-  }, [resolvedCount, radius])
-
+  // ——— Shaders
   const vertexShader = /* glsl */ `
     uniform float uTime;
-    uniform vec2 uMouse;
-    uniform float uPointBase;
-    uniform float uArcStart;
-    uniform float uArcEnd;
-    uniform float uArcFeather;
-    uniform float uVignette;
-
-    attribute float aAngle;
-
+    uniform vec2  uMouse;       // world-ish units
+    uniform float uPointSize;   // base px size
     varying float vAlpha;
 
-    float arcMask(float ang, float startA, float endA, float feather) {
-      // remap to [0,2pi) to handle wrap-around gracefully
-      float TWO_PI = 6.28318530718;
-      float s = mod(startA + TWO_PI, TWO_PI);
-      float e = mod(endA + TWO_PI, TWO_PI);
-      float x = mod(ang + TWO_PI, TWO_PI);
-
-      float inside;
-      if (s < e) {
-        inside = step(s, x) * step(x, e);
-      } else {
-        // arc spans across 0
-        inside = step(s, x) + step(x, e) - step(s, e);
-      }
-      // feather edges by distance to nearest boundary
-      float d1 = abs(x - s);
-      float d2 = abs(x - e);
-      float d = min(d1, d2);
-      float soft = smoothstep(0.0, feather, d);
-      return inside * soft;
-    }
-
     void main() {
-      float t = uTime * 0.25;
-
       vec3 p = position;
 
-      // gentle breathing along radius
-      float wobble = sin(t + length(p.xy) * 0.75) * 0.06;
-      p.xy += normalize(p.xy + 0.001) * wobble;
+      // Subtle swirl motion around origin (cinematic breathing)
+      float r = length(p.xy);
+      float theta = atan(p.y, p.x);
+      theta += 0.07 * sin(uTime * 0.35 + r * 0.6);
+      p.x = cos(theta) * r;
+      p.y = sin(theta) * r;
 
-      // mouse repel (mouse in NDC-ish scaled in shader)
-      float dMouse = distance(p.xy, vec2(uMouse.x, uMouse.y) * 4.0);
-      float repel = smoothstep(1.8, 0.0, dMouse);
-      p.xy += normalize(p.xy - vec2(uMouse.x, uMouse.y) * 4.0) * repel * 0.12;
-
-      // arc visibility (0..1)
-      float mArc = arcMask(aAngle, uArcStart, uArcEnd, uArcFeather);
-
-      // center vignette glow (particles nearer center slightly brighter)
-      float dCenter = length(p.xy) / 4.0;
-      float mV = smoothstep(1.3, 0.0, dCenter) * uVignette;
-
-      // alpha composed
-      vAlpha = 0.22 * mArc + 0.18 * mV + 0.12 * repel;
+      // Gentle mouse repulsion
+      float d = distance(p.xy, uMouse);
+      float influence = smoothstep(0.0, 1.5, 1.5 - d);
+      p.xy += normalize(p.xy - uMouse) * influence * 0.045;
 
       vec4 mvPosition = modelViewMatrix * vec4(p, 1.0);
+
+      // Depth-based size scaling
+      float depth = -mvPosition.z;
+      float size = uPointSize * (1.0 + clamp(depth * 0.06, 0.0, 1.0));
+
+      gl_PointSize = size;
       gl_Position = projectionMatrix * mvPosition;
 
-      float size = (uPointBase + 1.0 * repel) * (300.0 / -mvPosition.z);
-      gl_PointSize = clamp(size, 0.7, 2.4);
+      vAlpha = 0.6 + 0.4 * smoothstep(0.0, 8.0, depth);
     }
-  `
+  `;
 
   const fragmentShader = /* glsl */ `
-    uniform vec3 uColor;
+    precision mediump float;
     varying float vAlpha;
+    const vec3 teal = vec3(0.0, 0.92, 0.76);
 
     void main() {
-      vec2 uv = gl_PointCoord - 0.5;
-      float m = smoothstep(0.46, 0.0, length(uv)); // compact disc
-      float a = m * vAlpha * 0.85; // keep additive under control
-      if (a < 0.02) discard;
-      gl_FragColor = vec4(uColor, a);
+      vec2 uv = gl_PointCoord * 2.0 - 1.0;
+      float r2 = dot(uv, uv);
+      float mask = smoothstep(1.0, 0.6, r2);
+      gl_FragColor = vec4(teal, vAlpha * mask);
+      gl_FragColor.a *= smoothstep(1.0, 0.0, r2);
     }
-  `
+  `;
 
-  // HSV to RGB in JS to avoid GLSL complexity
-  function hsvToRgb(h: number, s: number, v: number) {
-    const c = v * s
-    const hp = (h % 360) / 60
-    const x = c * (1 - Math.abs((hp % 2) - 1))
-    let r = 0, g = 0, b = 0
-    if (0 <= hp && hp < 1) { r = c; g = x; b = 0 }
-    else if (1 <= hp && hp < 2) { r = x; g = c; b = 0 }
-    else if (2 <= hp && hp < 3) { r = 0; g = c; b = x }
-    else if (3 <= hp && hp < 4) { r = 0; g = x; b = c }
-    else if (4 <= hp && hp < 5) { r = x; g = 0; b = c }
-    else { r = c; g = 0; b = x }
-    const m = v - c
-    return new THREE.Color(r + m, g + m, b + m)
-  }
-
-  const baseColor = useMemo(
-    () => hsvToRgb(hue, saturation, value),
-    [hue, saturation, value]
-  )
-
-  const material = useMemo(() => {
-    return new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uMouse: { value: new THREE.Vector2(0, 0) },
-        uPointBase: { value: Math.min(pointSize, 1.6) },
-        uArcStart: { value: arcStart },
-        uArcEnd: { value: arcEnd },
-        uArcFeather: { value: arcFeather },
-        uVignette: { value: vignette },
-        uColor: { value: baseColor.clone() },
+  // ——— Material & uniforms
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uMouse: { value: new THREE.Vector2(0, -radius * 0.8) },
+      uPointSize: {
+        value:
+          pointSize *
+          (typeof window !== 'undefined' ? window.devicePixelRatio : 1),
       },
-      vertexShader,
-      fragmentShader,
-    })
-  }, [pointSize, arcStart, arcEnd, arcFeather, vignette, baseColor])
+    }),
+    [pointSize, radius]
+  );
 
-  useEffect(() => {
-    materialRef.current = material
-  }, [material])
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth) * 2 - 1
-      const y = -((e.clientY / window.innerHeight) * 2 - 1)
-      materialRef.current?.uniforms.uMouse.value.set(x, y)
+  // ——— Animate time + mouse (map normalized pointer to world-ish coords)
+  const { width, height } = viewport;
+  useFrame((_, delta) => {
+    if (matRef.current) {
+      matRef.current.uniforms.uTime.value += delta;
+      const mx = pointer.x * (width * 0.5);
+      const my = pointer.y * (height * 0.5);
+      matRef.current.uniforms.uMouse.value.set(mx, my);
     }
-    window.addEventListener('mousemove', onMove, { passive: true })
-    return () => window.removeEventListener('mousemove', onMove)
-  }, [])
+  });
 
-  useFrame((_, dt) => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value += dt
-    }
-  })
-
+  // ——— Cleanup
   useEffect(() => {
     return () => {
-      geometry.dispose()
-      material.dispose()
-    }
-  }, [geometry, material])
+      geomRef.current?.dispose?.();
+      matRef.current?.dispose?.();
+    };
+  }, []);
 
   return (
-    <points ref={pointsRef} geometry={geometry} material={material} frustumCulled={false} />
-  )
+    <points frustumCulled>
+      <bufferGeometry ref={geomRef}>
+        {/* ✅ R3F v9: use args to construct BufferAttribute */}
+        <bufferAttribute
+          attach="attributes-position"
+          args={[positions, 3]} // new THREE.BufferAttribute(positions, 3)
+          onUpdate={(attr: THREE.BufferAttribute) => {
+            attr.needsUpdate = true;
+            attr.setUsage(THREE.DynamicDrawUsage);
+          }}
+        />
+      </bufferGeometry>
+
+      <shaderMaterial
+        ref={matRef}
+        depthWrite={false}
+        transparent
+        blending={THREE.AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader={vertexShader}
+        fragmentShader={fragmentShader}
+      />
+    </points>
+  );
 }
