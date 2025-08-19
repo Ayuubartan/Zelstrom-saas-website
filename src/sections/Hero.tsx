@@ -1,38 +1,53 @@
 'use client'
 
-import { Canvas } from '@react-three/fiber'
-import { Suspense } from 'react'
-import NeuralParticles from '@/components/three/NeuralParticles'
-import { EffectComposer, Bloom } from '@react-three/postprocessing'
+import HeroScene from '@/components/three/HeroScene'
+import LoginButton from '../components/LoginButton'
 
 export default function Hero() {
   return (
-    <section className="relative w-full h-screen bg-black">
-      {/* Particles Canvas */}
-      <Canvas camera={{ position: [0, 0, 10], fov: 60 }}>
-        <Suspense fallback={null}>
-          <NeuralParticles />
-          <EffectComposer>
-            <Bloom intensity={1.2} luminanceThreshold={0.1} luminanceSmoothing={0.8} />
-          </EffectComposer>
-        </Suspense>
-      </Canvas>
+    <section className="relative h-screen w-full overflow-hidden bg-black">
+      {/* 3D background */}
+      <HeroScene />
 
-      {/* Overlay Text */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-center">
-        <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+      {/* Overlay content */}
+      <div className="pointer-events-none relative z-10 h-full flex flex-col items-center justify-center px-6 text-center">
+        <h1
+          className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight 
+                     bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 
+                     bg-clip-text text-transparent"
+        >
           Zelstrom — Live Neural Vectors in Motion
         </h1>
-        <p className="text-lg text-gray-300 mb-6">
+
+        <p className="mt-4 max-w-2xl text-base sm:text-lg text-white/70">
           Predictive media intelligence. Real-time optimization. Premium performance.
         </p>
-        <div className="flex gap-4">
-          <button className="px-6 py-3 rounded-full bg-teal-500 text-black font-semibold hover:bg-teal-400 transition">
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+          <a
+            href="#get-started"
+            className="pointer-events-auto rounded-full px-6 py-2 font-semibold
+                       bg-cyan-500 text-black
+                       hover:bg-cyan-400 hover:shadow-[0_0_20px_4px_rgba(34,211,238,0.7)]
+                       transition-all duration-300"
+          >
             Get Started
-          </button>
-          <button className="px-6 py-3 rounded-full border border-teal-500 text-teal-400 hover:bg-teal-500 hover:text-black transition">
+          </a>
+
+          <a
+            href="#learn-more"
+            className="pointer-events-auto rounded-full px-6 py-2 font-semibold
+                       border border-cyan-500 text-cyan-400
+                       hover:text-black hover:bg-cyan-400
+                       hover:shadow-[0_0_20px_4px_rgba(34,211,238,0.7)]
+                       transition-all duration-300"
+          >
             Learn More
-          </button>
+          </a>
+
+          <div className="pointer-events-auto">
+            <LoginButton />
+          </div>
         </div>
       </div>
     </section>

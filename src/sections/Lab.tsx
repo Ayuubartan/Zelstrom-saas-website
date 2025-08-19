@@ -1,18 +1,43 @@
-// Contact.tsx
 'use client'
-export default function Contact() {
+
+import Section from './Section'
+import Reveal from '@/components/motion/Reveal'
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
+
+const experiments = [
+  {
+    title: 'Z.A.O.E.',
+    desc: 'Zelstrom Autonomous Optimization Engine — real-time campaign tuning.',
+  },
+  {
+    title: 'Negotiator™',
+    desc: 'AI-driven media procurement intelligence with live market dynamics.',
+  },
+  {
+    title: 'Neural Vectors',
+    desc: 'Experimental visual layer: cinematic storytelling for analytics.',
+  },
+]
+
+export default function Lab() {
   return (
-    <section id="contact" className="py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <h2 className="text-3xl md:text-4xl font-semibold">Contact</h2>
-        <p className="mt-3 text-white/70">Let’s build your predictive media edge.</p>
-        <a
-          href="mailto:hello@zelstrom.io"
-          className="mt-6 inline-block rounded-xl bg-white/10 px-5 py-3 text-white hover:bg-white/20 transition"
-        >
-          hello@zelstrom.io
-        </a>
+    <Section id="lab" heading="Lab" subheading="Where we push the frontier.">
+      <div className="grid gap-6 md:grid-cols-3">
+        {experiments.map((exp, i) => (
+          <Reveal key={i}>
+            <Card className="bg-gradient-to-br from-white/5 to-white/0 border-white/10 rounded-2xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold text-white">
+                  {exp.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-zinc-300 text-sm leading-relaxed">{exp.desc}</p>
+              </CardContent>
+            </Card>
+          </Reveal>
+        ))}
       </div>
-    </section>
+    </Section>
   )
 }

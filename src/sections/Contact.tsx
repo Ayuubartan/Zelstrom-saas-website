@@ -1,11 +1,19 @@
-'use client';
+// src/sections/Contact.tsx
+'use client'
+
+import Section from '@/sections/Section' // or './Section' if you prefer relative
 export default function Contact() {
   return (
-    <section id="contact" className="py-24">
-      <div className="container mx-auto px-6">
-        <h2 className="text-3xl md:text-4xl font-semibold">Contact</h2>
-        <p className="mt-3 text-white/70">Let’s build your predictive media edge.</p>
+    <Section id="contact" heading="Contact" subheading="Partner with Zelstrom.">
+      <div className="rounded-2xl border border-white/10 p-8 bg-gradient-to-br from-white/5 to-white/0">
+        <p className="text-zinc-300">Email: hello@zelstrom.io</p>
+        <a
+          href="mailto:hello@zelstrom.io"
+          className="mt-6 inline-block rounded-xl bg-white/90 px-6 py-3 text-black font-semibold hover:bg-white"
+        >
+          Get in touch
+        </a>
       </div>
-    </section>
-  );
+    </Section>
+  )
 }

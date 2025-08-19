@@ -1,6 +1,9 @@
 // src/app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
+import SmoothScroll from '../components/SmoothScroll'
 
 const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.zelstrom.io'
 
@@ -25,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    site: '@zelstrom', // update when you have the official handle
+    site: '@zelstrom',
     creator: '@zelstrom',
     title: 'Zelstrom — Neural Vectors in Motion',
     description:
@@ -35,13 +38,10 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://www.zelstrom.io',
   },
-  icons: {
-    icon: '/favicon.ico',
-  },
+  icons: { icon: '/favicon.ico' },
   themeColor: '#0B0F1A',
 }
 
-// Prefer Next.js viewport export over a manual <meta name="viewport" ...>
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
@@ -51,9 +51,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-[#0B0F1A]">
+    <html lang="en" className="scroll-smooth bg-[#0B0F1A]">
       <body className="bg-[#0B0F1A] text-white antialiased">
-        {children}
+        <SmoothScroll>
+          {children}
+        </SmoothScroll>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

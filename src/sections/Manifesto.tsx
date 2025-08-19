@@ -1,16 +1,28 @@
-// Manifesto.tsx
 'use client'
+
+import Section from './Section'
+import Reveal from '@/components/motion/Reveal'
+
+const principles = [
+  'Data-in, value-out: every signal must yield measurable impact.',
+  'Predictive by design, not afterthought.',
+  'Automation > reports. Decisions at machine speed.',
+  'Transparency beats opacity — always explainable.',
+]
+
 export default function Manifesto() {
   return (
-    <section id="manifesto" className="py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <h2 className="text-3xl md:text-4xl font-semibold">Manifesto</h2>
-        <ul className="mt-6 grid gap-4 text-white/80">
-          <li>Model-first planning, not media-first buying.</li>
-          <li>Cross-channel, budget-aware predictions that self-calibrate.</li>
-          <li>Automation that compresses the agency cost stack.</li>
-        </ul>
-      </div>
-    </section>
+    <Section id="manifesto" heading="Manifesto" subheading="Principles we stand by.">
+      <ul className="space-y-4">
+        {principles.map((p, i) => (
+          <Reveal key={i}>
+            <li className="text-zinc-300 text-lg leading-snug flex items-start">
+              <span className="mr-3 text-cyan-400">▹</span>
+              {p}
+            </li>
+          </Reveal>
+        ))}
+      </ul>
+    </Section>
   )
 }

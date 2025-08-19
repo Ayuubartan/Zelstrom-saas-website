@@ -1,14 +1,48 @@
-'use client';
+'use client'
+
+import Section from './Section'
+import Reveal from '@/components/motion/Reveal'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Database, Brain, Cpu } from 'lucide-react'
+
+const features = [
+  {
+    icon: Database,
+    title: 'Vault',
+    desc: 'Unified ingestion layer. Normalize billions of media signals across every channel.',
+  },
+  {
+    icon: Brain,
+    title: 'Cortex',
+    desc: 'Predictive intelligence. Forecast KPIs, optimize budgets, and adapt in real time.',
+  },
+  {
+    icon: Cpu,
+    title: 'OS',
+    desc: 'Autonomous workflow engine. Automates reporting, insights, and optimization.',
+  },
+]
 
 export default function Work() {
   return (
-    <section id="work" className="relative w-full bg-[#00001] py-24 sm:py-28">
-      <div className="max-w-4xl mx-auto px-6 text-center">
-        <h2 className="text-3xl sm:text-4xl font-semibold text-white">Work</h2>
-        <p className="mt-4 text-white/60">
-          Case studies and results coming soon.
-        </p>
+    <Section id="work" heading="Work" subheading="What we build.">
+      <div className="grid gap-6 md:grid-cols-3">
+        {features.map((f, i) => (
+          <Reveal key={i}>
+            <Card className="bg-gradient-to-br from-white/5 to-white/0 border-white/10 rounded-2xl">
+              <CardHeader>
+                <f.icon className="w-8 h-8 text-cyan-400 mb-2" />
+                <CardTitle className="text-xl font-semibold text-white">
+                  {f.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-zinc-300 text-sm leading-relaxed">{f.desc}</p>
+              </CardContent>
+            </Card>
+          </Reveal>
+        ))}
       </div>
-    </section>
-  );
+    </Section>
+  )
 }

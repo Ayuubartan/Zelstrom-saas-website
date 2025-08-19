@@ -155,3 +155,7 @@ canvas {
   opacity: 1;
   transform: translateY(0);
 }
+/* Smooth scrolling for navbar anchors */
+html {
+  scroll-behavior: smooth;
+}
