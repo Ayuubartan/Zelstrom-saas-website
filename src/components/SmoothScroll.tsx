@@ -1,16 +1,39 @@
-// src/components/SmoothScroll.tsx
 'use client'
 
-import { PropsWithChildren, useEffect } from 'react'
+import { useEffect } from 'react'
+import Lenis from 'lenis'
 
-export default function SmoothScroll({ children }: PropsWithChildren) {
+type LenisInstance = {
+  raf: (time: number) => void
+  destroy: () => void
+}
+
+export default function SmoothScroll() {
   useEffect(() => {
-    const Lenis = require('lenis').default
-    const lenis = new Lenis({ duration: 1.2, smoothWheel: true })
-    const raf = (time: number) => { lenis.raf(time); requestAnimationFrame(raf) }
-    requestAnimationFrame(raf)
-    return () => lenis.destroy()
+    // Minimal constructor typing to avoid ts-ignore while keeping it robust
+    const L = Lenis as unknown as {
+      new (opts?: Record<string, unknown>): LenisInstance
+    }
+
+    const lenis: LenisInstance = new L({
+      smoothWheel: true,
+      syncTouch: true,
+      lerp: 0.08,
+    })
+
+    let rafId = 0
+    const raf = (time: number) => {
+      lenis.raf(time)
+      rafId = window.requestAnimationFrame(raf)
+    }
+
+    rafId = window.requestAnimationFrame(raf)
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      lenis.destroy()
+    }
   }, [])
 
-  return <>{children}</>
+  return null
 }
