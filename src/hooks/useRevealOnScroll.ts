@@ -4,28 +4,31 @@
 import { useEffect, useRef } from 'react'
 
 export default function useRevealOnScroll<T extends HTMLElement>(
-  opts?: IntersectionObserverInit
+  options?: IntersectionObserverInit & { once?: boolean }
 ) {
   const ref = useRef<T | null>(null)
-
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Add a class or data-attr your CSS can target for reveal animations
-          el.classList.add('revealed')
-          io.unobserve(el)
-        }
+    const { once = true, root = null, rootMargin = '0px', threshold = 0.12 } = options ?? {}
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            el.classList.add('revealed')
+            if (once) obs.unobserve(entry.target)
+          } else if (!once) {
+            el.classList.remove('revealed')
+          }
+        })
       },
-      { rootMargin: '0px 0px -10% 0px', threshold: 0.1, ...(opts || {}) }
+      { root, rootMargin, threshold }
     )
 
-    io.observe(el)
-    return () => io.disconnect()
-  }, [opts])
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [options])
 
   return ref
 }
