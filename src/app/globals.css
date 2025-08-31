@@ -55,8 +55,6 @@
    ──────────────────────────────── */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
   --popover: oklch(1 0 0);
@@ -86,6 +84,8 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
 }
 
 /* ────────────────────────────────
@@ -145,7 +145,6 @@ html, body, #__next, #root {
   background: #000 !important;
 }
 
-
 canvas {
   display: block; /* fix inline gap/scrollbars around R3F canvas */
 }
@@ -159,3 +158,45 @@ canvas {
 html {
   scroll-behavior: smooth;
 }
+:root {
+  --background: 240 6% 6%;
+  --foreground: 0 0% 100%;
+  --card: 240 6% 7.5%;
+  --card-foreground: 0 0% 100%;
+  --muted: 240 4.8% 12.9%;
+  --muted-foreground: 240 5% 64%;
+  --border: 240 5% 20%;
+  --input: 240 5% 20%;
+  --primary: 262 83% 58%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4.8% 12.9%;
+  --secondary-foreground: 0 0% 100%;
+  --accent: 210 100% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 85% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 262 83% 58%;
+}
+html.light,:root.light {
+  --background: 0 0% 100%;
+  --foreground: 222 84% 5%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 84% 5%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+}
+/* Focus ring utility for keyboard a11y */
+.focus-ring {
+  outline: none;
+  box-shadow:
+    0 0 0 2px hsl(var(--background)),
+    0 0 0 4px hsl(var(--ring));
+}
+/* Subtle hover lift for interactive cards/buttons */
+.hover-lift { transition: transform .15s ease, box-shadow .2s ease; }
+.hover-lift:hover { transform: translateY(-1px); }
+.hover-lift:active { transform: translateY(0); }

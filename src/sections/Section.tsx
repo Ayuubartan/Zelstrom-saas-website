@@ -1,18 +1,22 @@
+// src/sections/Section.tsx
 'use client'
 
+import * as React from 'react'
 import Reveal from '../components/motion/Reveal'
 
-export default function Section({
+export type SectionProps = React.PropsWithChildren<{
+  id: string
+  heading: string
+  subheading?: string
+  className?: string
+}>
+
+const Section: React.FC<SectionProps> = ({
   id,
   heading,
   subheading,
   children,
-}: {
-  id: string
-  heading: string
-  subheading?: string
-  children: React.ReactNode
-}) {
+}) => {
   return (
     <section
       id={id}
@@ -38,3 +42,5 @@ export default function Section({
     </section>
   )
 }
+
+export default Section

@@ -4,6 +4,9 @@ import { Suspense, useMemo, useRef, useCallback, useEffect } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import NeuralParticles from './NeuralParticles'
+import LinkButton from "@/components/ui/link-button"
+<><LinkButton href="/login" variant="default" size="lg">Log in</LinkButton><LinkButton href="#contact" variant="outline" size="lg">Talk to us</LinkButton></>
+
 
 // Project mouse to world Z=0 plane and smooth it
 function usePointerAttractor() {
