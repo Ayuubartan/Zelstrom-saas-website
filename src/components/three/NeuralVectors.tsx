@@ -1,3 +1,6 @@
+// src/components/three/NeuralVectors.tsx
+'use client'
+
 export type NeuralVectorsProps = {
   _text?: string
   _particleCount?: number
@@ -19,6 +22,19 @@ export default function NeuralVectors({
   _target = 'text',
   _morphSpeed = 0.8,
 }: NeuralVectorsProps) {
-  // ...existing scene
-  return <group />
+  // Store props on the node so they're "used" (no-op for rendering)
+  return (
+    <group
+      userData={{
+        _text,
+        _particleCount,
+        _color,
+        _radius,
+        _pointSize,
+        _enableBloom,
+        _target,
+        _morphSpeed,
+      }}
+    />
+  )
 }

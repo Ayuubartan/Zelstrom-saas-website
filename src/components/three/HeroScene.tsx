@@ -19,7 +19,7 @@ function usePointerAttractor() {
 
   const update = useCallback(
     (e: { clientX: number; clientY: number; currentTarget: HTMLElement }) => {
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      const rect = e.currentTarget.getBoundingClientRect()
       ndc.current.set(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
@@ -37,7 +37,8 @@ function usePointerAttractor() {
     [camera, plane, ray, tmp]
   )
 
-  return { target, update }
+  // If you later want to pass this to particles, return { target, update }
+  return { update }
 }
 
 export default function HeroScene() {
@@ -60,49 +61,47 @@ export default function HeroScene() {
 }
 
 function PointerLayer() {
-  const { target, update } = usePointerAttractor()
+  const { update } = usePointerAttractor()
   const { gl } = useThree()
 
-  // ✅ React 19: provide initial values to refs
+  // Provide initial value to ref
   const handlerRef = useRef<((e: PointerEvent) => void) | null>(null)
 
   useEffect(() => {
-    const el = gl.domElement
+    const el = gl.domElement as HTMLCanvasElement
     el.style.touchAction = 'none'
 
-    // create handler once
     if (!handlerRef.current) {
-      handlerRef.current = (e: PointerEvent) =>
+      handlerRef.current = (e: PointerEvent) => {
         update({
           clientX: e.clientX,
           clientY: e.clientY,
-          currentTarget: el,
-        } as any)
+          currentTarget: el, // HTMLCanvasElement extends HTMLElement
+        })
+      }
     }
 
     const handler = handlerRef.current
-    el.addEventListener('pointermove', handler!, { passive: true })
-    el.addEventListener('pointerdown', handler!, { passive: true })
-    el.addEventListener('pointerenter', handler!, { passive: true })
+    el.addEventListener('pointermove', handler, { passive: true })
+    el.addEventListener('pointerdown', handler, { passive: true })
+    el.addEventListener('pointerenter', handler, { passive: true })
 
     return () => {
-      el.removeEventListener('pointermove', handler!)
-      el.removeEventListener('pointerdown', handler!)
-      el.removeEventListener('pointerenter', handler!)
+      el.removeEventListener('pointermove', handler)
+      el.removeEventListener('pointerdown', handler)
+      el.removeEventListener('pointerenter', handler)
     }
   }, [gl, update])
 
   return (
     <group>
       <NeuralParticles
-         count={9000}
-  radius={4.5}
-  pointSize={3.2}
-  thetaStartDeg={200}
-  thetaEndDeg={350}
+        count={9000}
+        radius={4.5}
+        pointSize={3.2}
+        thetaStartDeg={200}
+        thetaEndDeg={350}
       />
     </group>
   )
-  
 }
-

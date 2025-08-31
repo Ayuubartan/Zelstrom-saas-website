@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import type { TooltipProps } from 'recharts'
 import { AlertCircle, TrendingUp } from 'lucide-react'
 
 type Point = {
@@ -135,7 +136,14 @@ function ToggleChip({
   )
 }
 
-/* ---------- Tooltip ---------- */
+/* ---------- Tooltip (typed) ---------- */
+
+type FPTooltipProps = TooltipProps<number, string> & {
+  formatX?: (t: string) => string
+  formatY?: (v: number) => string
+  label?: string // Add the label property to the type
+  payload?: { name: string; value: number | null }[] // Define the payload type explicitly
+}
 
 function ForecastTooltip({
   active,
@@ -143,13 +151,21 @@ function ForecastTooltip({
   label,
   formatX = defaultFormatX,
   formatY = defaultFormatY,
-}: any) {
-  if (!active || !payload?.length) return null
-  const map = Object.fromEntries(payload.map((p: any) => [p.name, p.value]))
+}: FPTooltipProps) {
+  if (!active || !payload || payload.length === 0) return null
+
+  // Build a name → value map, keeping only numeric values
+  const entries: [string, number][] = []
+  for (const p of payload) {
+    const name = String(p.name)
+    const val = typeof p.value === 'number' ? p.value : undefined
+    if (val !== undefined && !Number.isNaN(val)) entries.push([name, val])
+  }
+  const map = Object.fromEntries(entries) as Record<string, number>
 
   return (
     <div className="rounded-xl border border-white/10 bg-black/90 px-3 py-2 text-xs text-white/90 shadow-lg">
-      <div className="mb-1 font-medium text-white">{formatX(label)}</div>
+      <div className="mb-1 font-medium text-white">{typeof label === 'string' ? formatX(label) : label}</div>
       {map['Actual'] != null && (
         <div className="flex items-center justify-between gap-4">
           <span className="opacity-75">Actual</span>
@@ -286,7 +302,6 @@ export default function ForecastPreview({
                   fill="rgba(59,130,246,0.18)" // blue-500-ish
                   isAnimationActive={false}
                   dot={false}
-                  activeDot={false as any}
                 />
                 <Area
                   type="monotone"
@@ -296,7 +311,6 @@ export default function ForecastPreview({
                   fill="rgba(34,211,238,0.18)" // cyan-400-ish
                   isAnimationActive={false}
                   dot={false}
-                  activeDot={false as any}
                 />
               </>
             )}

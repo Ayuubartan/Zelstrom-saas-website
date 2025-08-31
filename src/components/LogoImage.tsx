@@ -1,24 +1,14 @@
-// src/components/LogoImage.tsx
-'use client'
+import Image from "next/image";
 
-import Image, { type ImageProps } from 'next/image'
+type Props = {
+  src: string;
+  alt?: string;      // ← required by a11y rule; default below
+  width?: number;
+  height?: number;
+  className?: string;
+  priority?: boolean;
+};
 
-type Props = Omit<ImageProps, 'placeholder' | 'blurDataURL'> & {
-  fade?: boolean
-}
-
-/**
- * CLS-safe logo image:
- * - Uses explicit width/height or a fixed wrapper+fill pattern
- * - Lazy by default
- * - Optional hover fade
- */
-export function LogoImage({ fade = true, className, loading = 'lazy', ...props }: Props) {
-  return (
-    <Image
-      {...props}
-      loading={loading}
-      className={(fade ? 'opacity-80 transition hover:opacity-100 ' : '') + (className ?? '')}
-    />
-  )
+export default function LogoImage({ alt = "", ...props }: Props) {
+  return <Image alt={alt} {...props} />;
 }
